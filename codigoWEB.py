@@ -22,7 +22,7 @@ with st.sidebar:
     )
 
 # Cargar el modelo entrenado
-model = pickle.load(open('C:/Users/LG/PROYECTO DE PRACTICA/Nueva carpeta/models/grad_hp.pkl', 'rb'))
+model = pickle.load(open('models/knn_hp.pkl', 'rb'))
 
 # Función para asignar color según el nivel de compromiso
 def get_engagement_color(prediction):

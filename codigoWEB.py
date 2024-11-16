@@ -6,112 +6,110 @@ import pickle
 
 # Configuración de la página de Streamlit
 st.set_page_config(
-    page_title="Student Engagement Prediction",  # Título de la página
-    page_icon="https://images.emojiterra.com/twitter/v13.1/512px/1f393.png",  # Ícono de la página
+    page_title="Predicción del Compromiso Estudiantil",
+    page_icon="https://images.emojiterra.com/twitter/v13.1/512px/1f393.png",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # Barra lateral con opciones de menú
 with st.sidebar:
+    st.title("Opciones")
     selected = option_menu(
-        menu_title=None,
-        options=["Predict Engagement", "Evaluate Dataset"],  # Opciones del menú
-        icons=["graph-up", "file-earmark-arrow-up"],  # Iconos de las opciones
+        menu_title="Menú Principal",
+        options=["Predicción Individual", "Evaluación por Dataset"],
+        icons=["graph-up", "file-earmark-arrow-up"],
         menu_icon="pencil-square"
     )
+    st.info("Seleccione una opción para comenzar.")
 
 # Cargar el modelo entrenado
-model = pickle.load(open('models/knn_hp.pkl', 'rb'))
+model = pickle.load(open('models/Algoritmo_RF.pkl', 'rb'))
 
 # Función para asignar color según el nivel de compromiso
 def get_engagement_color(prediction):
     if prediction == "L":
-        return "red"  # Bajo compromiso: rojo
+        return "red"  # Bajo compromiso
     elif prediction == "M":
-        return "orange"  # Compromiso medio: naranja
+        return "orange"  # Compromiso medio
     else:
-        return "green"  # Alto compromiso: verde
+        return "green"  # Alto compromiso
 
 # Opción de entrada individual de datos
-if selected == "Predict Engagement":
-    st.header('Predict Student Engagement')
-    st.subheader('User Input')
+if selected == "Predicción Individual":
+    st.header('Predicción de Compromiso Estudiantil')
+    st.subheader('Entrada de Usuario')
 
     # Función para obtener la entrada del usuario
     def get_user_input():
-        raisedhands = st.slider('Raised Hands (Count)', 0, 100, 10)  # Valor mínimo, máximo y por defecto
-        VisITedResources = st.slider('Visited Resources (Count)', 0, 100, 10)
-        AnnouncementsView = st.slider('Announcements Viewed (Count)', 0, 100, 10)
-        Discussion = st.slider('Discussion Participation (Count)', 0, 100, 10)
+        with st.container():
+            col1, col2 = st.columns(2)
+            with col1:
+                raisedhands = st.slider('Manos Levantadas (Count)', 0, 100, 10)
+                VisITedResources = st.slider('Recursos Visitados (Count)', 0, 100, 10)
+            with col2:
+                AnnouncementsView = st.slider('Anuncios Vistos (Count)', 0, 100, 10)
+                Discussion = st.slider('Participación en Discusiones (Count)', 0, 100, 10)
 
-        # Crear un diccionario con los datos
-        user_data = {
-            'raisedhands': raisedhands,
-            'VisITedResources': VisITedResources,
-            'AnnouncementsView': AnnouncementsView,
-            'Discussion': Discussion
-        }
+        # Crear un DataFrame
+        user_data = pd.DataFrame({
+            'raisedhands': [raisedhands],
+            'VisITedResources': [VisITedResources],
+            'AnnouncementsView': [AnnouncementsView],
+            'Discussion': [Discussion]
+        })
+        return user_data
 
-        # Convertir a DataFrame
-        features = pd.DataFrame(user_data, index=[0])
-        return features
-
-    # Obtener los datos del usuario
+    # Obtener datos de entrada
     user_input = get_user_input()
 
     # Botón para realizar la predicción
-    if st.button("Evaluate Engagement"):
+    if st.button("Evaluar Compromiso"):
         prediction = model.predict(user_input)
         probability = model.predict_proba(user_input) if hasattr(model, 'predict_proba') else None
 
-        st.subheader('Prediction Result')
+        st.subheader('Resultado de Predicción')
         classification_result = str(prediction[0])
-
-        # Obtener el color según el nivel de compromiso
         color = get_engagement_color(classification_result)
 
-        # Mostrar el resultado de la clasificación con el color correspondiente
-        st.markdown(f"<h3 style='color: {color};'>Predicted Engagement Level: {classification_result}</h3>", unsafe_allow_html=True)
+        # Mostrar el resultado de la clasificación
+        st.markdown(f"<h3 style='color: {color};'>Nivel de Compromiso Predicho: {classification_result}</h3>", unsafe_allow_html=True)
 
-        # Mostrar probabilidad de la predicción si está disponible
+        # Nivel de confianza como barra de progreso con porcentaje
         if probability is not None:
-            prob = np.max(probability) * 100  # Probabilidad más alta
-            st.subheader('Confidence Level')
-            st.success(f"{prob:.2f}%")
+            prob = np.max(probability) * 100  # Probabilidad máxima
+            st.subheader('Nivel de Confianza')
+            st.progress(int(prob))
+            st.write(f"{prob:.2f}%")
 
 # Opción para evaluación en lote de un archivo de datos
-if selected == "Evaluate Dataset":
-    st.header('Evaluate Engagement for Uploaded Data')
-    uploaded_file = st.file_uploader("Upload your dataset", type=["csv"])
+if selected == "Evaluación por Dataset":
+    st.header('Evaluación de Compromiso para Datos Cargados')
+    uploaded_file = st.file_uploader("Suba su dataset (CSV)", type=["csv"])
 
     if uploaded_file:
-        st.subheader('Input Data')
+        st.subheader('Datos de Entrada')
         df = pd.read_csv(uploaded_file)
 
-        # Extraer las columnas requeridas
+        # Seleccionar columnas relevantes
         X = df[['raisedhands', 'VisITedResources', 'AnnouncementsView', 'Discussion']]
 
-        # Realizar las predicciones y calcular probabilidades
+        # Realizar predicciones y calcular probabilidades
         prediction = model.predict(X)
         probability = model.predict_proba(X) if hasattr(model, 'predict_proba') else None
 
-        # Crear un DataFrame para mostrar los resultados
-        df['Predicted Engagement'] = prediction
+        # Asignar resultados y colores al DataFrame
+        df['Nivel de Compromiso'] = prediction
+        df['Color'] = df['Nivel de Compromiso'].apply(get_engagement_color)
 
-        # Agregar columna de confianza si existe la probabilidad
+        # Agregar probabilidad si está disponible
         if probability is not None:
-            confidence = [f"{(np.max(p) * 100):.2f}%" for p in probability]
-            df['Confidence Level'] = confidence
+            df['Nivel de Confianza'] = [f"{(np.max(p) * 100):.2f}%" for p in probability]
 
-        # Asignar colores a las predicciones de compromiso
-        df['Color'] = df['Predicted Engagement'].apply(get_engagement_color)
+        # Mostrar tabla con colores de predicción
+        st.write(df.style.applymap(lambda color: f'background-color: {color}', subset=['Color']))
 
-        # Mostrar los resultados con los colores
-        st.write(df.style.applymap(lambda v: f'background-color: {v}', subset=['Predicted Engagement']).apply(
-            lambda v: f'background-color: {v}', subset=['Predicted Engagement']))
-            
-# Ocultar elementos de la interfaz de Streamlit
+# Ocultar algunos elementos de la interfaz de Streamlit
 hide_st_style = """
             <style>
             #MainMenu {visibility: hidden;}
